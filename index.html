@@ -462,54 +462,59 @@
     {id:4, title:'제주 카페 신축 (25평)', img:''}
   ];
 
-  function renderCases() {
+  function applyAllCmsData(data) {
     var grid = document.getElementById('caseGrid');
-    if(!grid) return;
-    var data = {};
-    try { data = JSON.parse(localStorage.getItem('cms_data') || '{}'); } catch(e){}
-    var cases = (data.cases && data.cases.length) ? data.cases : DEFAULT_CASES;
-    grid.innerHTML = cases.map(function(c){
-      var thumb = c.img
-        ? '<img src="' + c.img + '" style="width:100%;height:160px;object-fit:cover;">'
-        : '<div class="case-thumb">' + (c.title || '시공 사진') + '</div>';
-      return '<div class="case-card">' + thumb + '<div class="label">' + c.title + '</div></div>';
-    }).join('');
-  }
-  renderCases();
+    if(grid) {
+      var cases = (data.cases && data.cases.length) ? data.cases : DEFAULT_CASES;
+      grid.innerHTML = cases.map(function(c){
+        var thumb = c.img
+          ? '<img src="' + c.img + '" style="width:100%;height:160px;object-fit:cover;">'
+          : '<div class="case-thumb">' + (c.title || '시공 사진') + '</div>';
+        return '<div class="case-card">' + thumb + '<div class="label">' + c.title + '</div></div>';
+      }).join('');
+    }
 
-  (function(){
-    try {
-      var data = JSON.parse(localStorage.getItem('cms_data') || '{}');
-
-      document.querySelectorAll('[data-cms]').forEach(function(el){
-        var key = el.getAttribute('data-cms');
-        if(!data[key]) return;
-        var val = data[key];
-        if(el.tagName === 'A'){
-          if(key === 'phone'){
-            el.textContent = val;
-            el.href = 'tel:' + val.replace(/[^0-9+]/g,'');
-          } else if(key === 'email'){
-            el.textContent = val;
-            el.href = 'mailto:' + val;
-          } else {
-            el.innerHTML = val;
-          }
+    document.querySelectorAll('[data-cms]').forEach(function(el){
+      var key = el.getAttribute('data-cms');
+      if(!data[key]) return;
+      var val = data[key];
+      if(el.tagName === 'A'){
+        if(key === 'phone'){
+          el.textContent = val;
+          el.href = 'tel:' + val.replace(/[^0-9+]/g,'');
+        } else if(key === 'email'){
+          el.textContent = val;
+          el.href = 'mailto:' + val;
         } else {
           el.innerHTML = val;
         }
-      });
+      } else {
+        el.innerHTML = val;
+      }
+    });
 
-      if(data['phone']){
-        var fp = document.getElementById('floatPhone');
-        if(fp) fp.href = 'tel:' + data['phone'].replace(/[^0-9+]/g,'');
-      }
-      if(data['kakao-link']){
-        var ka = document.getElementById('kakaoLink');
-        if(ka){ ka.href = data['kakao-link']; ka.removeAttribute('onclick'); }
-      }
-    } catch(e){}
+    if(data['phone']){
+      var fp = document.getElementById('floatPhone');
+      if(fp) fp.href = 'tel:' + data['phone'].replace(/[^0-9+]/g,'');
+    }
+    if(data['kakao-link']){
+      var ka = document.getElementById('kakaoLink');
+      if(ka){ ka.href = data['kakao-link']; ka.removeAttribute('onclick'); }
+    }
+  }
+
+  // 로컬(파일) 환경에서는 localStorage 사용
+  (function(){
+    try { applyAllCmsData(JSON.parse(localStorage.getItem('cms_data') || '{}')); } catch(e){}
   })();
+
+  // 배포 환경(GitHub Pages 등)에서는 cms_data.json을 우선 로드
+  if(window.location.protocol !== 'file:') {
+    fetch('cms_data.json?v=' + Date.now())
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(d){ applyAllCmsData(d); })
+      .catch(function(){});
+  }
 
   document.querySelectorAll('.faq-q').forEach(function(q){
     q.addEventListener('click', function(){
