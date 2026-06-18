@@ -84,8 +84,8 @@
   .add-case-box h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px;}
   .add-case-inner{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;}
   .img-upload-label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:100px;border:1px solid var(--line);border-radius:8px;background:#fafbfc;cursor:pointer;font-size:13px;color:#888;position:relative;overflow:hidden;}
-  .img-upload-label input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
-  .img-upload-label img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .img-upload-label input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2;}
+  .img-upload-label img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;}
   .img-upload-label .img-hint{font-size:22px;}
   .add-case-right{display:flex;flex-direction:column;gap:10px;}
   .add-case-right input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fafbfc;}
@@ -422,14 +422,15 @@
   document.getElementById('caseImgInput').addEventListener('change', function(e){
     var file = e.target.files[0];
     if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev){
-      pendingImg = ev.target.result;
+    compressImage(file, function(dataUrl){
+      pendingImg = dataUrl;
       var label = document.getElementById('imgUploadLabel');
-      var ex = label.querySelector('img'); if(ex) ex.remove();
-      var img = document.createElement('img'); img.src = pendingImg; label.appendChild(img);
-    };
-    reader.readAsDataURL(file);
+      var ex = label.querySelector('img.preview'); if(ex) ex.remove();
+      var img = document.createElement('img');
+      img.src = pendingImg;
+      img.className = 'preview';
+      label.appendChild(img);
+    });
   });
 
   function addCase(){
@@ -440,7 +441,7 @@
     document.getElementById('caseTitleInput').value = '';
     pendingImg = '';
     var label = document.getElementById('imgUploadLabel');
-    var ex = label.querySelector('img'); if(ex) ex.remove();
+    var ex = label.querySelector('img.preview'); if(ex) ex.remove();
     document.getElementById('caseImgInput').value = '';
   }
 
@@ -557,7 +558,28 @@
 
   /* ── Helpers ── */
   function getCmsData(){ try{ return JSON.parse(localStorage.getItem('cms_data')||'{}'); }catch(e){ return {}; } }
-  function setCmsData(d){ localStorage.setItem('cms_data', JSON.stringify(d)); }
+  function setCmsData(d){
+    try{ localStorage.setItem('cms_data', JSON.stringify(d)); }
+    catch(e){ alert('저장 공간이 부족합니다. 이미지를 더 작은 파일로 교체하거나 사례를 일부 삭제해주세요.'); }
+  }
+
+  function compressImage(file, callback){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var MAX = 900;
+        var w = img.width, h = img.height;
+        if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        callback(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
   function showToast(){
     var t = document.getElementById('saveToast');
     t.style.display = 'block';
